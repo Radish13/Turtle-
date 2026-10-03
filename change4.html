@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RK3566 HMI Control</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui}
+body{background:#070707;color:#e0e0e0;padding:15px;padding-bottom:100px}
+.header{display:flex;justify-content:space-between;align-items:center;padding-bottom:15px;border-bottom:1px solid #222;flex-wrap:wrap;gap:10px}
+.header h1{color:#00ff88;font-size:20px}
+.badge{padding:6px 12px;border-radius:20px;border:1px solid #333;font-size:12px;background:#111}
+.badge.on{border-color:#00ff88;color:#00ff88;background:rgba(0,255,136,.1)}
+.badge.alarm{border-color:#ff3b3b;color:#ff3b3b;background:rgba(255,59,59,.1);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;margin-top:16px}
+.card{background:#111;border:1px solid #222;border-radius:18px;padding:18px;transition:.3s}
+.card:hover{border-color:#2a2a2a}
+.card h3{color:#00ff88;font-size:11px;letter-spacing:1px;text-transform:uppercase;margin-bottom:14px;display:flex;justify-content:space-between}
+.value{font-size:28px;font-weight:800}
+.label{color:#777;font-size:13px;margin-top:4px}
+.btn{padding:12px 16px;border-radius:12px;border:1px solid #333;background:#1a1a1a;color:#fff;cursor:pointer;font-weight:700;transition:.2s;width:100%;margin-top:8px}
+.btn:hover{border-color:#00ff88;color:#00ff88}
+.btn-primary{background:#00ff88;color:#000;border-color:#00ff88}
+.btn-primary:hover{background:#00dd77;transform:scale(1.02)}
+.btn-red{background:#ff3b3b;color:#fff;border-color:#ff3b3b}
+.btn-red:hover{background:#ff1a1a}
+.slider{width:100%;height:8px;background:#222;border-radius:10px;appearance:none;outline:none;margin:14px 0;cursor:pointer}
+.slider::-webkit-slider-thumb{appearance:none;width:22px;height:22px;border-radius:50%;background:#00ff88;border:2px solid #000;cursor:pointer;box-shadow:0 0 10px rgba(0,255,136,.5)}
+.wifi-item{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#0e0e0e;border:1px solid #222;border-radius:10px;margin-bottom:8px;cursor:pointer;transition:.2s}
+.wifi-item:hover{border-color:#00ff88}
+.signal{width:40px;height:6px;background:#222;border-radius:10px;overflow:hidden}
+.signal-bar{height:100%;background:#00ff88}
+.hmi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.hmi-btn{padding:18px;border-radius:14px;border:2px solid #333;background:#1a1a1a;color:#fff;font-weight:800;font-size:14px;cursor:pointer;transition:.2s;text-align:center}
+.hmi-btn.active{border-color:#00ff88;background:#00ff88;color:#000;box-shadow:0 0 20px rgba(0,255,136,.3)}
+.hmi-btn.estop{border-color:#ff3b3b;background:#ff3b3b;color:#fff;font-size:18px;grid-column:span 2;padding:22px}
+.joy{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px}
+.joy button{padding:16px;background:#0e0e0e;border:1px solid #333;border-radius:12px;color:#fff;cursor:pointer;font-size:20px}
+.joy button:active{background:#00ff88;color:#000}
+.status-dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:6px}
+.status-dot.on{background:#00ff88;box-shadow:0 0 8px #00ff88}
+.status-dot.off{background:#333}
+input.input{width:100%;background:#0a0a0a;border:1px solid #333;color:#fff;padding:10px;border-radius:10px;margin-top:8px;outline:none}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>⚙️ RK3566 HMI CONTROL</h1>
+  <div style="display:flex;gap:8px">
+    <span class="badge" id="hmiMode">MODE: MANUAL</span>
+    <span class="badge on" id="hmiPower">● SYSTEM READY</span>
+    <span class="badge" id="estopBadge">E-STOP: OK</span>
+  </div>
+</div>
+
+<div class="grid">
+  <!-- WIFI SCAN -->
+  <section class="card">
+    <h3>📶 WIFI SCANNER <button onclick="scanWifi()" style="float:right;background:#111;border:1px solid #333;color:#00ff88;padding:4px 10px;border-radius:20px;cursor:pointer;font-size:11px">🔄 SCAN</button></h3>
+    <div id="wifiList"><p style="color:#555;font-size:13px">Click SCAN to find networks</p></div>
+    <div id="wifiConnect" style="display:none;margin-top:12px;border-top:1px solid #222;padding-top:12px">
+      <div class="label">Connect to <b id="selectedSSID" style="color:#00ff88"></b></div>
+      <input id="wifiPass" class="input" type="password" placeholder="Password (if needed)">
+      <button class="btn btn-primary" onclick="connectWifi()">Connect</button>
+    </div>
+  </section>
+
+  <!-- PWM SLIDERS -->
+  <section class="card">
+    <h3>🎚️ GPIO PWM CONTROL</h3>
+    <div>
+      <div style="display:flex;justify-content:space-between"><span class="label">MOTOR 1 - Pin 17</span><span class="value" style="font-size:16px;color:#00ff88" id="pwm-pin17-val">0%</span></div>
+      <input type="range" class="slider" id="pwm-pin17" min="0" max="100" value="0" oninput="setPWM('pin17',this.value)">
+      <div style="display:flex;justify-content:space-between"><span class="label">MOTOR 2 - Pin 18</span><span class="value" style="font-size:16px;color:#00ff88" id="pwm-pin18-val">0%</span></div>
+      <input type="range" class="slider" id="pwm-pin18" min="0" max="100" value="0" oninput="setPWM('pin18',this.value)">
+      <div style="display:flex;justify-content:space-between"><span class="label">FAN - Pin 27</span><span class="value" style="font-size:16px;color:#00ff88" id="pwm-pin27-val">0%</span></div>
+      <input type="range" class="slider" id="pwm-pin27" min="0" max="100" value="0" oninput="setPWM('pin27',this.value)">
+      <div style="display:flex;justify-content:space-between"><span class="label">LIGHT - Pin 22</span><span class="value" style="font-size:16px;color:#00ff88" id="pwm-pin22-val">0%</span></div>
+      <input type="range" class="slider" id="pwm-pin22" min="0" max="100" value="0" oninput="setPWM('pin22',this.value)">
+    </div>
+  </section>
+
+  <!-- HMI MACHINE -->
+  <section class="card" style="border-color:#00ff88">
+    <h3>🏭 MACHINE HMI <span style="color:#555">LOCAL DISK CONTROL</span></h3>
+
+    <div class="hmi-grid">
+      <button class="hmi-btn" id="btn-power" onclick="hmiToggle('power')">⏻ POWER<br><small id="power-state">OFF</small></button>
+      <button class="hmi-btn" id="btn-mode" onclick="toggleMode()">🔄 MODE<br><small id="mode-state">MANUAL</small></button>
+    </div>
+
+    <div style="margin-top:14px">
+      <div class="label" style="margin-bottom:8px">OUTPUTS</div>
+      <div class="hmi-grid">
+        <button class="hmi-btn" id="out-motor" onclick="hmiOut('motor')"><span class="status-dot off" id="dot-motor"></span>MOTOR</button>
+        <button class="hmi-btn" id="out-valve" onclick="hmiOut('valve')"><span class="status-dot off" id="dot-valve"></span>VALVE</button>
+        <button class="hmi-btn" id="out-conveyor" onclick="hmiOut('conveyor')"><span class="status-dot off" id="dot-conveyor"></span>CONVEYOR</button>
+        <button class="hmi-btn" onclick="setSpeed(0)">⏹ STOP</button>
+      </div>
+    </div>
+
+    <div>
+      <div style="display:flex;justify-content:space-between;margin-top:14px"><span class="label">SPEED</span><span class="value" style="font-size:16px" id="speedVal">0%</span></div>
+      <input type="range" class="slider" id="speedSlider" min="0" max="100" value="0" oninput="hmiSpeed(this.value)">
+    </div>
+
+    <div class="joy">
+      <div></div><button onclick="hmiDir('FWD')">⬆️</button><div></div>
+      <button onclick="hmiDir('LEFT')">⬅️</button><button onclick="hmiDir('STOP')" style="background:#222">⏹</button><button onclick="hmiDir('RIGHT')">➡️</button>
+      <div></div><button onclick="hmiDir('REV')">⬇️</button><div></div>
+    </div>
+
+    <button class="hmi-btn estop" onclick="hmiEstop()">🛑 EMERGENCY STOP</button>
+    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn btn-ghost" style="flex:1" onclick="hmiReset()">↺ Reset</button><button class="btn btn-primary" style="flex:1" onclick="hmiStartCycle()">▶ Start Cycle</button></div>
+  </section>
+</div>
+
+<script>
+let selectedSSID='';
+// WIFI
+async function scanWifi(){
+  document.getElementById('wifiList').innerHTML='<p style="color:#00ff88">Scanning...</p>';
+  const r = await fetch('/api/wifi/scan'); const nets = await r.json();
+  document.getElementById('wifiList').innerHTML = nets.map(n=>`
+    <div class="wifi-item" onclick="selectWifi('${n.ssid}')">
+      <div><b>${n.ssid}</b><div style="font-size:11px;color:#777">${n.security}</div></div>
+      <div style="display:flex;align-items:center;gap:8px"><div class="signal"><div class="signal-bar" style="width:${n.signal}%"></div></div><span style="font-size:12px">${n.signal}%</span></div>
+    </div>
+  `).join('');
+}
+function selectWifi(ssid){ selectedSSID=ssid; document.getElementById('selectedSSID').textContent=ssid; document.getElementById('wifiConnect').style.display='block'; }
+async function connectWifi(){
+  const pass=document.getElementById('wifiPass').value;
+  const r=await fetch('/api/wifi/connect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ssid:selectedSSID,password:pass})});
+  const j=await r.json(); alert(j.status);
+}
+
+// PWM
+async function setPWM(pin,val){
+  document.getElementById(`pwm-${pin}-val`).textContent=val+'%';
+  await fetch('/api/pwm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin,value:val})});
+}
+async function loadPWM(){
+  const r=await fetch('/api/pwm'); const s=await r.json();
+  for(let pin in s){ const el=document.getElementById(`pwm-${pin}`); if(el){ el.value=s[pin]; document.getElementById(`pwm-${pin}-val`).textContent=s[pin]+'%'; } }
+}
+loadPWM();
+
+// HMI
+let hmiState={};
+async function loadHMI(){
+  const r=await fetch('/api/hmi'); hmiState=await r.json();
+  document.getElementById('power-state').textContent=hmiState.power?'ON':'OFF';
+  document.getElementById('btn-power').classList.toggle('active',hmiState.power);
+  document.getElementById('hmiPower').textContent=hmiState.power?'● SYSTEM RUNNING':'● SYSTEM READY';
+  document.getElementById('hmiPower').className='badge '+(hmiState.power?'on':'');
+  document.getElementById('mode-state').textContent=hmiState.mode;
+  document.getElementById('hmiMode').textContent='MODE: '+hmiState.mode;
+  document.getElementById('estopBadge').textContent=hmiState.estop?'E-STOP: ACTIVE':'E-STOP: OK';
+  document.getElementById('estopBadge').className='badge '+(hmiState.estop?'alarm':'');
+  document.getElementById('speedVal').textContent=hmiState.speed+'%';
+  document.getElementById('speedSlider').value=hmiState.speed;
+  for(let out in hmiState.outputs){
+    const active=hmiState.outputs[out];
+    document.getElementById('out-'+out)?.classList.toggle('active',active);
+    const dot=document.getElementById('dot-'+out); if(dot){ dot.className='status-dot '+(active?'on':'off'); }
+  }
+}
+async function hmiToggle(key){ await fetch('/api/hmi',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({[key]:!hmiState[key]})}); loadHMI(); }
+async function toggleMode(){ const mode=hmiState.mode==='MANUAL'?'AUTO':'MANUAL'; await fetch('/api/hmi',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode})}); loadHMI(); }
+async function hmiOut(name){ const newVal=!hmiState.outputs[name]; const obj={}; obj[name]=newVal; await fetch('/api/hmi',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(obj)}); loadHMI(); }
+async function hmiSpeed(v){ document.getElementById('speedVal').textContent=v+'%'; await fetch('/api/hmi',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({speed:parseInt(v)})}); }
+async function hmiDir(dir){ await fetch('/api/hmi',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({direction:dir})}); if(dir!=='STOP') alert('Moving: '+dir); }
+async function hmiEstop(){ if(!confirm('EMERGENCY STOP?'))return; await fetch('/api/hmi',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({estop:true,power:false,speed:0,direction:'STOP',motor:false,valve:false,conveyor:false})}); loadHMI(); }
+async function hmiReset(){ await fetch('/api/hmi',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({estop:false,power:false})}); loadHMI(); }
+async function hmiStartCycle(){ if(hmiState.estop){ alert('Reset E-STOP first!'); return; } await fetch('/api/hmi',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({power:true,speed:50})}); loadHMI(); }
+
+loadHMI(); setInterval(loadHMI,2000);
+</script>
+</body>
+</html>
