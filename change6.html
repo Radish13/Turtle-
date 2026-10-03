@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>RK3566 ULTIMATE HMI</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui}body{background:#050505;color:#e0e0e0;overflow-x:hidden}
+.header{background:#0a0a0a;border-bottom:2px solid #00ff88;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:99}
+.header h1{color:#00ff88;font-size:18px;letter-spacing:1px}.badge{padding:5px 12px;border-radius:20px;border:1px solid #333;background:#111;font-size:11px;font-weight:700}.badge.on{border-color:#00ff88;color:#00ff88;background:rgba(0,255,136,.1)}.badge.alarm{border-color:#ff3b3b;color:#ff3b3b;background:rgba(255,59,59,.2);animation:pulse 1s infinite}@keyframes pulse{50%{opacity:.6}}
+.tabs{display:flex;gap:6px;padding:10px;background:#070707;position:sticky;top:46px;z-index:98;overflow-x:auto}.tab{white-space:nowrap;padding:10px 18px;border-radius:12px;border:1px solid #222;background:#111;cursor:pointer;font-size:13px;font-weight:800;transition:.2s}.tab.active{background:#00ff88;color:#000;border-color:#00ff88;box-shadow:0 0 15px rgba(0,255,136,.4)}
+.panel{display:none;padding:12px}.panel.active{display:block}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px}
+.card{background:#111;border:1px solid #222;border-radius:18px;padding:16px;position:relative;overflow:hidden}.card.hi{border-color:#00ff88;box-shadow:0 0 20px rgba(0,255,136,.15)}.card h3{color:#00ff88;font-size:11px;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.value{font-size:26px;font-weight:900}.label{color:#666;font-size:12px;margin-top:4px}
+.btn{padding:14px;border-radius:14px;border:2px solid #333;background:#1a1a1a;color:#fff;cursor:pointer;font-weight:800;font-size:13px;transition:.15s;width:100%;margin-top:6px;user-select:none}.btn:active{transform:scale(.97)}.btn-primary{background:#00ff88;color:#000;border-color:#00ff88}.btn-red{background:#ff3b3b;color:#fff;border-color:#ff3b3b}.btn:disabled{opacity:.3}
+.slider{width:100%;height:10px;background:#222;border-radius:10px;appearance:none;outline:none;margin:10px 0}.slider::-webkit-slider-thumb{appearance:none;width:26px;height:26px;border-radius:50%;background:#00ff88;border:3px solid #000;box-shadow:0 0 12px #00ff88}
+.joy{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}.joy button{padding:18px;background:#0e0e0e;border:1px solid #333;border-radius:14px;color:#fff;font-size:22px;font-weight:800}.joy button:active{background:#00ff88;color:#000}
+.status-dot{width:12px;height:12px;border-radius:50%;display:inline-block;margin-right:6px}.on-dot{background:#00ff88;box-shadow:0 0 10px #00ff88}.off-dot{background:#333}
+.wifi-item{display:flex;justify-content:space-between;align-items:center;padding:10px;background:#0e0e0e;border:1px solid #222;border-radius:10px;margin-bottom:6px}
+.signal{width:50px;height:8px;background:#222;border-radius:10px;overflow:hidden}.signal-bar{height:100%;background:#00ff88}
+.canvas-box{background:#000;border:1px solid #222;border-radius:12px;height:160px;position:relative;overflow:hidden}
+</style></head><body>
+
+<div class="header"><h1>🦾 RK3566 ULTIMATE HMI v3.0</h1><div style="display:flex;gap:6px"><span class="badge on" id="sysBadge">● ONLINE</span><span class="badge" id="modeBadge">TEACH</span><span class="badge" id="estopBadge">E-STOP OK</span></div></div>
+
+<div class="tabs"><div class="tab active" onclick="showTab('pnp')">🦾 PICK & PLACE</div><div class="tab" onclick="showTab('hw')">🎚️ HARDWARE</div><div class="tab" onclick="showTab('net')">📶 NETWORK</div><div class="tab" onclick="showTab('sys')">💾 SYSTEM</div></div>
+
+<!-- TAB 1: PICK & PLACE ULTIMATE -->
+<div id="pnp" class="panel active">
+<div class="grid">
+
+<!-- JOG 4 AXIS -->
+<div class="card hi">
+<h3>🎮 JOG 4-AXIS (X Y Z R) <span id="posDisplay" style="color:#fff">0,0,0,0°</span></h3>
+<div class="joy">
+<button onclick="jog('y+',10)">Y+ ⬆️</button><div style="display:flex;align-items:center;justify-content:center;flex-direction:column"><span class="value" style="font-size:20px" id="posY">0</span><span class="label">Y</span></div><button onclick="jog('x+',10)">X+ ➡️</button>
+<button onclick="jog('x-',10)">⬅️ X-</button><div style="display:flex;align-items:center;justify-content:center"><span class="value" id="posX" style="font-size:20px">0</span></div><button onclick="jog('y-',10)">Y- ⬇️</button>
+<button onclick="jog('z+',10)">Z+ ⬆️</button><div style="display:flex;align-items:center;justify-content:center;flex-direction:column"><span class="value" style="font-size:20px" id="posZ">0</span><span class="label">Z</span></div><button onclick="jog('z-',10)">Z- ⬇️</button>
+<button onclick="jog('r-',10)">R- ↩️</button><div style="display:flex;align-items:center;justify-content:center;flex-direction:column"><span class="value" style="font-size:20px;color:#ffaa00" id="posR">0°</span><span class="label">ROT</span></div><button onclick="jog('r+',10)">R+ ↪️</button>
+</div>
+<div style="display:flex;gap:4px;margin-top:10px"><button class="btn" style="flex:1;padding:8px" onclick="jog('x+',1)">1mm</button><button class="btn" style="flex:1;padding:8px" onclick="jog('x+',10)">10mm</button><button class="btn" style="flex:1;padding:8px" onclick="jog('x+',50)">50mm</button></div>
+<div style="margin-top:12px"><div style="display:flex;justify-content:space-between"><span class="label">GRIPPER ROTATE</span><span id="gripperVal" style="color:#ffaa00">0°</span></div><input type="range" class="slider" id="gripper" min="-180" max="180" value="0" oninput="setGripper(this.value)"></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px"><button class="btn btn-primary" id="vacBtn" onclick="act('vacuum')">💨 VACUUM OFF</button><button class="btn" onclick="act('home')">🏠 HOME ALL</button></div>
+</div>
+
+<!-- VISION + TEACH -->
+<div class="card hi">
+<h3>📷 VISION + TEACH <span class="badge on" id="visionBadge">CAM LIVE</span></h3>
+<div class="canvas-box" id="visionBox">
+<div style="width:100%;height:100%;background:radial-gradient(circle at 30% 40%, #111 0%, #000 80%);display:flex;align-items:center;justify-content:center;color:#333">CAM FEED 640x480</div>
+<div id="detectBox" style="position:absolute;width:60px;height:60px;border:3px solid #00ff88;display:none;left:120px;top:80px;box-shadow:0 0 20px #00ff88, inset 0 0 20px rgba(0,255,136,.2)"><div style="background:#00ff88;color:#000;font-size:10px;font-weight:900;padding:2px 6px;position:absolute;top:-18px;left:-3px;white-space:nowrap" id="confLabel">95% PART</div><div style="position:absolute;width:100%;height:100%;border:1px dashed #00ff88;animation:pulse 1s infinite"></div></div>
+<div style="position:absolute;bottom:6px;left:8px;font-size:10px;color:#00ff88;background:rgba(0,0,0,.7);padding:2px 6px;border-radius:4px" id="visionCoords">X:0 Y:0</div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px"><button class="btn btn-primary" onclick="visionDetect()">🔍 DETECT PART</button><button class="btn" onclick="visionPick()">🎯 AUTO PICK</button></div>
+
+<div style="margin-top:12px;max-height:220px;overflow:auto;background:#0a0a0a;border-radius:12px;padding:8px">
+<div style="color:#00ff88;font-size:10px;margin-bottom:6px">📦 PICK POSITIONS (disk)</div><div id="pickList"></div>
+<div style="color:#ffaa00;font-size:10px;margin:10px 0 6px">📍 PLACE POSITIONS</div><div id="placeList"></div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px"><button class="btn" onclick="teach('pick')">+ TEACH PICK</button><button class="btn" onclick="teach('place')">+ TEACH PLACE</button></div>
+</div>
+
+<!-- AUTO CYCLE + MODBUS -->
+<div class="card hi">
+<h3>⚙️ AUTO CYCLE + MODBUS <span id="stateBadge" class="badge on">IDLE</span></h3>
+<div style="background:#0a0a0a;border-radius:12px;padding:10px;font-size:12px;line-height:1.8" id="modbusInfo">Loading Modbus...</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px"><button class="btn" onclick="setMode()">MODE: <span id="pnpMode">TEACH</span></button><div style="background:#0a0a0a;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:8px"><span class="label">CYCLES</span><span class="value" id="cycleCount" style="color:#00ff88">0</span></div></div>
+<div style="margin-top:10px"><div style="display:flex;justify-content:space-between"><span class="label">SPEED</span><span id="speedVal">50%</span></div><input type="range" class="slider" id="speed" min="10" max="100" value="50" oninput="setSpeed(this.value)"></div>
+<button class="btn btn-primary" style="font-size:18px;padding:20px;margin-top:10px" onclick="runCycle()">▶️ RUN PICK → PLACE</button>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px"><button class="btn" onclick="act('pick')">⬇️ PICK ONLY</button><button class="btn" onclick="act('place')">⬆️ PLACE ONLY</button></div>
+<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><span class="badge" id="sPick">Pick Sensor OFF</span><span class="badge" id="sPlace">Place OFF</span><span class="badge" id="convB">Conv OFF</span><span class="badge" id="vacB">Vac OFF</span></div>
+<div style="display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-top:8px"><button class="btn" onclick="toggleConv()">Toggle Conv</button><button class="btn btn-red" onclick="estop()">🛑 EMERGENCY STOP</button></div>
+<button class="btn" style="margin-top:6px" onclick="resetEstop()">↺ RESET E-STOP</button>
+</div>
+
+</div>
+</div>
+
+<!-- TAB 2: HARDWARE -->
+<div id="hw" class="panel"><div class="grid">
+<div class="card"><h3>🎚️ PWM (Motors/Fan/Light)</h3><div id="pwmArea"></div></div>
+<div class="card"><h3>🔌 8x RELAY BOARD</h3><div id="relayArea" style="display:grid;grid-template-columns:1fr 1fr;gap:6px"></div></div>
+<div class="card"><h3>📏 SENSORS</h3><div id="sensorArea" style="font-size:14px;line-height:2"></div><button class="btn" onclick="loadSensors()">Refresh</button></div>
+<div class="card"><h3>📊 LIVE CHART</h3><canvas id="chart" width="320" height="140" style="width:100%;background:#000;border-radius:10px"></canvas></div>
+</div></div>
+
+<!-- TAB 3: NETWORK -->
+<div id="net" class="panel"><div class="grid">
+<div class="card"><h3>📶 WIFI <button onclick="loadWifi()" style="float:right;background:#111;border:1px solid #333;color:#00ff88;padding:4px 10px;border-radius:20px;font-size:11px">SCAN</button></h3><div id="wifi"></div></div>
+<div class="card"><h3>🔵 BLUETOOTH</h3><div id="bt"></div><button class="btn" onclick="loadBT()">Scan BT</button></div>
+<div class="card"><h3>🌐 SYSTEM</h3><div id="sysInfo"></div></div>
+</div></div>
+
+<!-- TAB 4: SYSTEM -->
+<div id="sys" class="panel"><div class="grid">
+<div class="card"><h3>💾 LOCAL DISK FILES</h3><div id="files"></div><button class="btn" onclick="loadFiles()">Refresh</button></div>
+<div class="card"><h3>📁 BACKUP</h3><p class="label">All saved in./data/ - survives reboot</p><button class="btn btn-primary" onclick="downloadBackup()">⬇️ Download Backup JSON</button><button class="btn" onclick="alert('Location: '+location.origin+'\\nData:./data/')">📁 Show Path</button></div>
+</div></div>
+
+</div>
+
+<script>
+let pnp={}
+function showTab(id){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.getElementById(id).classList.add('active');event.target.classList.add('active');}
+async function loadPNP(){let r=await fetch('/api/pickplace');pnp=await r.json();
+document.getElementById('posX').textContent=pnp.pos.x;document.getElementById('posY').textContent=pnp.pos.y;document.getElementById('posZ').textContent=pnp.pos.z;document.getElementById('posR').textContent=pnp.pos.r+'°';
+document.getElementById('posDisplay').textContent=`${pnp.pos.x},${pnp.pos.y},${pnp.pos.z},${pnp.pos.r}°`;
+document.getElementById('pnpMode').textContent=pnp.mode;document.getElementById('modeBadge').textContent=pnp.mode;document.getElementById('stateBadge').textContent=pnp.state;
+document.getElementById('cycleCount').textContent=pnp.cycle_count;document.getElementById('estopBadge').textContent=pnp.estop?'E-STOP ACTIVE':'E-STOP OK';document.getElementById('estopBadge').className='badge '+(pnp.estop?'alarm':'');
+document.getElementById('vacBtn').textContent=pnp.vacuum?'💨 VACUUM ON':'💨 VACUUM OFF';document.getElementById('vacBtn').className='btn '+(pnp.vacuum?'btn-primary':'');document.getElementById('vacB').textContent='Vac '+(pnp.vacuum?'ON':'OFF');document.getElementById('vacB').className='badge '+(pnp.vacuum?'on':'');
+document.getElementById('convB').textContent='Conv '+(pnp.conveyor?'ON':'OFF');document.getElementById('convB').className='badge '+(pnp.conveyor?'on':'');
+document.getElementById('pickList').innerHTML=pnp.pick_positions.map((p,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px;background:#111;border:1px solid #222;border-radius:8px;margin-bottom:4px;font-size:11px"><span><b style="color:#00ff88">${p.name}</b> ${p.x},${p.y},${p.z},R${p.r||0}</span><div><button onclick="goPos('pick',${i})" style="background:#111;border:1px solid #00ff88;color:#00ff88;padding:4px 8px;border-radius:6px;margin-right:4px">GO</button><button onclick="delPos('pick',${i})" style="background:#111;border:1px solid #ff3b3b;color:#ff3b3b;padding:4px 8px;border-radius:6px">X</button></div></div>`).join('');
+document.getElementById('placeList').innerHTML=pnp.place_positions.map((p,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px;background:#111;border:1px solid #222;border-radius:8px;margin-bottom:4px;font-size:11px"><span><b style="color:#ffaa00">${p.name}</b> ${p.x},${p.y},${p.z},R${p.r||0}</span><div><button onclick="goPos('place',${i})" style="background:#111;border:1px solid #00ff88;color:#00ff88;padding:4px 8px;border-radius:6px;margin-right:4px">GO</button><button onclick="delPos('place',${i})" style="background:#111;border:1px solid #ff3b3b;color:#ff3b3b;padding:4px 8px;border-radius:6px">X</button></div></div>`).join('');
+document.getElementById('speedVal').textContent=pnp.speed+'%';document.getElementById('speed').value=pnp.speed;
+document.getElementById('modbusInfo').innerHTML=`Servo X:<b style="color:#00ff88"> ${pnp.pos.x}</b> Y:${pnp.pos.y} Z:${pnp.pos.z} R:${pnp.pos.r}°<br>Vacuum: ${pnp.vacuum?'ON':'OFF'} • Power: ${pnp.power?'ON':'OFF'} • Modbus: <span style="color:#00ff88">CONNECTED</span><br>State: <b>${pnp.state}</b>`;
+}
+async function jog(a,s){await fetch('/api/pickplace/jog',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({axis:a,step:s})});loadPNP();}
+async function act(action){if(action==='vacuum')await fetch('/api/pickplace',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({vacuum:!pnp.vacuum})});else await fetch('/api/pickplace',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action})});loadPNP();}
+async function teach(t){await fetch('/api/pickplace',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'teach_'+t})});loadPNP();}
+async function goPos(type,i){let pos=type==='pick'?pnp.pick_positions[i]:pnp.place_positions[i];await fetch('/api/pickplace',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pos})});loadPNP();}
+async function delPos(type,i){if(type==='pick')pnp.pick_positions.splice(i,1);else pnp.place_positions.splice(i,1);await fetch('/api/pickplace',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pick_positions:pnp.pick_positions,place_positions:pnp.place_positions})});loadPNP();}
+async function setSpeed(v){document.getElementById('speedVal').textContent=v+'%';await fetch('/api/pickplace',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({speed:parseInt(v)})});}
+async function setGripper(v){document.getElementById('gripperVal').textContent=v+'°';await fetch('/api/pickplace',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({gripper_angle:parseInt(v),pos:{...pnp.pos,r:parseInt(v)}})});loadPNP();}
+async function setMode(){let m=pnp.mode==='TEACH'?'AUTO':'TEACH';await fetch('/api/pickplace',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:m})});loadPNP();}
+async function runCycle(){await fetch('/api/pickplace',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'run_cycle',power:true})});loadPNP();}
+async function toggleConv(){await fetch('/api/pickplace',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({conveyor:!pnp.conveyor})});loadPNP();}
+async function estop(){if(!confirm('E-STOP ALL?'))return;await fetch('/api/pickplace',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'estop'})});loadPNP();}
+async function resetEstop(){await fetch('/api/pickplace',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'reset'})});loadPNP();}
+async function visionDetect(){let r=await fetch('/api/vision/detect',{method:'POST'});let d=await r.json();document.getElementById('detectBox').style.display='block';document.getElementById('detectBox').style.left=d.x+'px';document.getElementById('detectBox').style.top=d.y+'px';document.getElementById('confLabel').textContent=d.conf*100+'% PART';document.getElementById('visionCoords').textContent=`X:${d.x} Y:${d.y} Conf:${d.conf}`;}
+async function visionPick(){await visionDetect();setTimeout(()=>{act('pick');},400);}
+// HW
+async function loadPWM(){let r=await fetch('/api/pwm');let d=await r.json();let html='';for(let k in d){html+=`<div style="display:flex;justify-content:space-between;margin-top:8px"><span>${k.toUpperCase()}</span><span style="color:#00ff88">${d[k]}%</span></div><input type="range" class="slider" value="${d[k]}" min="0" max="100" oninput="setPWM('${k}',this.value)">`;}document.getElementById('pwmArea').innerHTML=html;}
+async function setPWM(k,v){let r=await fetch('/api/pwm');let d=await r.json();d[k]=parseInt(v);await fetch('/api/pwm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});loadPWM();}
+async function loadRelays(){let r=await fetch('/api/relays');let d=await r.json();let html='';for(let k in d){html+=`<button class="btn ${d[k]?'btn-primary':''}" onclick="toggleRelay('${k}')"><span class="status-dot ${d[k]?'on-dot':'off-dot'}"></span>${k.toUpperCase()} ${d[k]?'ON':'OFF'}</button>`;}document.getElementById('relayArea').innerHTML=html;}
+async function toggleRelay(k){let r=await fetch('/api/relays');let d=await r.json();d[k]=!d[k];await fetch('/api/relays',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});loadRelays();}
+async function loadSensors(){let r=await fetch('/api/sensors');let s=await r.json();document.getElementById('sensorArea').innerHTML=`CPU Temp: <b style="color:${s.cpu_temp>70?'#ff3b3b':'#00ff88'}">${s.cpu_temp.toFixed(1)}°C</b><br>Voltage: ${s.voltage}V<br>Current: ${s.current}A<br>Battery: ${s.battery}%<br>Pick Sensor: ${s.pick_sensor?'DETECTED':'EMPTY'}<br>Place Sensor: ${s.place_sensor?'OCCUPIED':'FREE'}`;document.getElementById('sPick').textContent='Pick '+(s.pick_sensor?'DETECTED':'EMPTY');document.getElementById('sPick').className='badge '+(s.pick_sensor?'on':'');document.getElementById('sPlace').textContent='Place '+(s.place_sensor?'OCCUPIED':'FREE');}
+async function loadWifi(){let r=await fetch('/api/wifi/scan');let w=await r.json();document.getElementById('wifi').innerHTML=w.map(n=>`<div class="wifi-item"><div><b>${n.ssid}</b><div style="font-size:11px;color:#777">${n.security}</div></div><div style="displa
